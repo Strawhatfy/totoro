@@ -1,5 +1,10 @@
 Totoro
 ======
+.. image:: https://img.shields.io/pypi/v/totoro.svg
+    :target: https://pypi.python.org/pypi/totoro
+
+.. image:: https://img.shields.io/pypi/dm/totoro.svg
+    :target: https://pypi.python.org/pypi/totoro
 
 Celery integration with Tornado.
 

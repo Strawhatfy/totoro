@@ -11,6 +11,7 @@ You can install Totoro either via the Python Package Index (PyPI) or from source
 To install using pip, simply:
 
 .. code-block:: bash
+
     $ sudo pip install totoro
 
 or alternatively (you really should be using pip though):

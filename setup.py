@@ -116,7 +116,7 @@ setup(
     },
     author="Alex Lee",
     author_email="lyd.alexlee.public@gmail.com",
-    url="",
+    url="https://github.com/Strawhatfy/totoro",
     license="http://www.apache.org/licenses/LICENSE-2.0",
     description="Celery integration with Tornado",
     Keywords=['tornado', 'celery', 'amqp', 'redis'],

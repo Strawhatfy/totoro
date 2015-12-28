@@ -9,33 +9,28 @@ Installation
 You can install Totoro either via the Python Package Index (PyPI) or from source.
 
 To install using pip, simply:
-```sh
+.. code-block:: bash
     $ sudo pip install totoro
-```
 
 or alternatively (you really should be using pip though):
 
-```sh
+.. code-block:: bash
 
     $ sudo easy_install totoro
-```
 
 or from source:
 
-```sh
+.. code-block:: bash
 
     $ sudo python setup.py install
-```
 
 Totoro can only support AMQP by default. To use the redis, you can specify the requirements on the pip comand-line by using brackets.
 
-```sh
+.. code-block:: bash
 
     $ sudo pip install totoro[redis]
-```
 
 Getting Started
 ------------
 
-```python
-```
+.. code-block:: python

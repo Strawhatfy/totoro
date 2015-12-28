@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import logging
 
 import tornado.ioloop
+import celery
 import celery.app.amqp
 from celery.backends.amqp import AMQPBackend
 from celery.backends.redis import RedisBackend
@@ -47,8 +48,8 @@ def setup_producer(celery_app=None, io_loop=None, result_cls=None, task_publish_
     io_loop = io_loop or tornado.ioloop.IOLoop.instance()
     result_cls = result_cls or totoro.base.AsyncResult
 
-    if (celery_app.conf.BROKER_URL[0:3] == 'redis'
-            and celery_app.conf.CELERY_RESULT_BACKEND[0:3] != 'redis'):
+    if (celery_app.conf.BROKER_URL[0:5] == 'redis'
+            and celery_app.conf.CELERY_RESULT_BACKEND[0:5] != 'redis'):
         raise ValueError('Redis broker only supports the redis result backend.')
 
     if (celery_app.conf.BROKER_URL

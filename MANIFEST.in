@@ -1,2 +1,3 @@
 recursive-include demos *.py README
+include LICENSE
 include README.rst

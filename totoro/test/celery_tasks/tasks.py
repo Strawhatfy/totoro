@@ -10,8 +10,7 @@ from celery import Celery
 
 celery = Celery("totoro_celery_tasks")
 celery.conf.update(
-    # BROKER_URL=os.environ.get('BROKER_URL', 'amqp://guest:guest@localhost:5672/%2F'),
-    BROKER_URL=os.environ.get('BROKER_URL', 'redis://127.0.0.1:6379/1'),
+    BROKER_URL=os.environ.get('BROKER_URL', 'amqp://guest:guest@localhost:5672/%2F'),
     CELERY_RESULT_BACKEND=os.environ.get('CELERY_RESULT_BACKEND', 'amqp://guest:guest@localhost:5672/%2F'),
     CELERY_TASK_SERIALIZER='json',
     CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content

@@ -59,7 +59,10 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            self.assertRaises(tasks.TaskExecError, lambda: response.result)
+            with self.assertRaises(Exception) as context:
+                (lambda: response.result)()
+            self.assertTrue(type(context.exception).__name__.endswith('TaskExecError'))
+            # self.assertRaises(tasks.TaskExecError, lambda: response.result)
         future = gen.Task(tasks.error.apply_async, args=['TaskExecError'])
         io_loop.add_future(future, lambda f: done(f.result()))
         io_loop.start()
@@ -82,8 +85,12 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            from celery.exceptions import TaskRevokedError
-            self.assertRaises(TaskRevokedError, lambda: response.result)
+            with self.assertRaises(Exception) as context:
+                (lambda: response.result)()
+            self.assertTrue(type(context.exception).__name__.endswith('TaskRevokedError'))
+
+            # from celery.exceptions import TaskRevokedError
+            # self.assertRaises(TaskRevokedError, lambda: response.result)
         future = gen.Task(tasks.add.apply_async,
                           args=[1, 2],
                           **{'expires': 1, 'countdown': 2})

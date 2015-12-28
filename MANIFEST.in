@@ -1,0 +1,2 @@
+recursive-include demos *.py README
+include README.rst

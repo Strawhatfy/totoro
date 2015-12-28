@@ -31,6 +31,12 @@ def sleep(seconds):
     return seconds
 
 
+@celery.task
+def echo(msg):
+    time.sleep(1)
+    return msg
+
+
 class TaskExecError(Exception):
     pass
 

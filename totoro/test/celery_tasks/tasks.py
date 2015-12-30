@@ -15,8 +15,13 @@ celery.conf.update(
     CELERY_TASK_SERIALIZER='json',
     CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
     CELERY_RESULT_SERIALIZER='json',
-    CELERY_TIMEZONE='Europe/Oslo',
+    CELERY_TIMEZONE='Asia/Shanghai',
     CELERY_ENABLE_UTC=True,
+    TOTORO_AMQP_CONNECTION_POOL={
+        'max_idle_connections': 1,
+        'max_open_connections': 10,
+        'max_recycle_sec': 3600
+    },
 )
 
 

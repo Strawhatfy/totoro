@@ -17,6 +17,7 @@ from tornado import ioloop, gen
 from tornado.concurrent import Future
 
 from totoro.base import (
+    TaskProducerAdapter,
     TaskPublishDelegate,
     TaskConsumerBase,
     WaitForResultTimeoutError)
@@ -52,7 +53,7 @@ class Connection(object):
 
     @property
     def is_idle(self):
-        return not (self._consumers or self._waiting_callers)
+        return len(self._consumers) == 0 and len(self._waiting_callers) == 0
 
     def queue_declare(self, callback, queue='', passive=False, durable=False,
                       exclusive=False, auto_delete=False, nowait=False,
@@ -61,7 +62,7 @@ class Connection(object):
             raise ValueError('Can not pass a callback if nowait is True')
 
         if self.is_ready:
-            LOGGER.info('queue_declare: queue={0}'.format(queue))
+            LOGGER.debug('queue_declare: queue={0}'.format(queue))
             self._channel.queue_declare(callback, queue, passive, durable, exclusive,
                                         auto_delete, nowait, arguments)
         else:
@@ -71,7 +72,7 @@ class Connection(object):
     def basic_publish(self, exchange, routing_key, body,
                       properties=None, mandatory=False, immediate=False):
         if self.is_ready:
-            LOGGER.info('basic_publish: exchange={0} routing_key={1}'.format(exchange, routing_key))
+            LOGGER.debug('basic_publish: exchange={0} routing_key={1}'.format(exchange, routing_key))
             self._channel.basic_publish(exchange, routing_key, body,
                                         properties, mandatory, immediate)
         else:
@@ -85,7 +86,7 @@ class Connection(object):
             self._waiting_callers.append(partial(self.basic_consume, consumer_callback, queue, no_ack,
                                                  exclusive, consumer_tag, arguments))
         else:
-            LOGGER.info('basic_consume: queue={0} consumer_tag={1}'.format(queue, consumer_tag))
+            LOGGER.debug('basic_consume: queue={0} consumer_tag={1}'.format(queue, consumer_tag))
             consumer_tag = self._channel.basic_consume(
                 consumer_callback, queue, no_ack,
                 exclusive, consumer_tag, arguments)
@@ -96,6 +97,7 @@ class Connection(object):
         return consumer_tag
 
     def basic_cancel(self, callback=None, consumer_tag='', nowait=False):
+        LOGGER.debug('enter basic_cancel: consumer_tag={0}'.format(consumer_tag))
         if callback and nowait is True:
             raise ValueError('Can not pass a callback if nowait is True')
 
@@ -103,17 +105,18 @@ class Connection(object):
             self._waiting_callers.append(partial(self.basic_cancel, callback, consumer_tag, nowait))
             return
         if consumer_tag not in self._consumers:
+            LOGGER.info('Invalid consumer_tag:{0}'.format(consumer_tag))
             return
         cb = callback
-        if callback and not nowait:
-            def callback_wrapper(method_frame):
-                del self._consumers[consumer_tag]
-                callback(method_frame)
-            cb = callback_wrapper
-        LOGGER.info('basic_cancel: consumer_tag={0}'.format(consumer_tag))
-        self._channel.basic_cancel(cb, consumer_tag, nowait)
         if nowait:
             del self._consumers[consumer_tag]
+        else:
+            def callback_wrapper(method_frame):
+                del self._consumers[consumer_tag]
+                if callback:
+                    callback(method_frame)
+            cb = callback_wrapper
+        self._channel.basic_cancel(cb, consumer_tag, nowait)
 
     def connect(self):
         if self._connected_future is None:
@@ -208,6 +211,33 @@ class Connection(object):
 
 class ConnectionPool(object):
     """"""
+    CONN_OPTIONS_NAMES = (
+        'max_idle_connections',
+        'max_recycle_sec',
+        'max_open_connections')
+
+    @classmethod
+    def parse_conn_options(cls):
+        conn_options = TaskProducerAdapter.app.conf.get('TOTORO_AMQP_CONNECTION_POOL', dict())
+        current_conn_options = dict()
+        if isinstance(conn_options, dict):
+            for n in cls.CONN_OPTIONS_NAMES:
+                if n in conn_options:
+                    current_conn_options[n] = int(conn_options.get(n))
+        else:
+            LOGGER.warning('Invalid conn_options: {0}'.format(conn_options))
+        LOGGER.info('ConnectionPool - current_conn_options: {0}'.format(
+            ', '.join(['{0}={1}'.format(k, v) for k, v in current_conn_options.items()])))
+        return current_conn_options
+
+    @staticmethod
+    def instance():
+        if not hasattr(ConnectionPool, '_instance'):
+            ConnectionPool._instance = ConnectionPool(
+                TaskProducerAdapter.app.conf.BROKER_URL,
+                **ConnectionPool.parse_conn_options())
+        return ConnectionPool._instance
+
     def __init__(self, url,
                  max_idle_connections=1,
                  max_recycle_sec=3600,
@@ -272,13 +302,20 @@ class ConnectionPool(object):
                 fut.set_result(conn)
                 LOGGER.debug("Passing returned connection to waiter: %s", self.stat())
             else:
+                LOGGER.info("Add connection to free pool: %s", self.stat())
                 self._free_conn.append(conn)
-                LOGGER.debug("Add connection to free pool: %s", self.stat())
+                if len(self._free_conn) > self.max_idle:
+                    for _ in xrange(0, len(self._free_conn)):
+                        conn = self._free_conn.popleft()
+                        if conn.is_idle:
+                            self._close_async(conn)
+                        else:
+                            self._free_conn.append(conn)
         else:
             self._close_async(conn)
 
     def _close_async(self, conn):
-        self.io_loop.add_future(conn.close_async(), callback=self._after_close)
+        self.io_loop.add_future(conn.close(), callback=self._after_close)
 
     def _after_close(self, future):
         if self._waitings:
@@ -294,7 +331,7 @@ class AMQPConsumer(TaskConsumerBase):
     """"""
     def __init__(self, **kwargs):
         super(AMQPConsumer, self).__init__(**kwargs)
-        self._connection_pool = ConnectionPool(self.app.conf.CELERY_RESULT_BACKEND)
+        self._connection_pool = ConnectionPool.instance()
 
     @gen.coroutine
     def _consume(self, task_id, callback, wait_timeout):
@@ -304,8 +341,8 @@ class AMQPConsumer(TaskConsumerBase):
         consume_future = Future()
 
         def _basic_cancel():
-            consume_future.set_result(None)
             conn.basic_cancel(consumer_tag=consumer_tag)
+            consume_future.set_result(None)
 
         if wait_timeout:
             def _on_timeout():
@@ -339,7 +376,7 @@ class AMQPConsumer(TaskConsumerBase):
         def tracking(fut=None):
             if fut:
                 fut.result()
-            LOGGER.info('Task({0}) is completed.'.format(task_id))
+            LOGGER.debug('Task({0}) is completed.'.format(task_id))
         future = self._consume(task_id, callback, wait_timeout)
         if not future.done():
             self.io_loop.add_future(future, lambda f: tracking(f))
@@ -351,7 +388,7 @@ class AMQPTaskPublishDelegate(TaskPublishDelegate):
     """"""
     def __init__(self, task_producer):
         super(AMQPTaskPublishDelegate, self).__init__(task_producer)
-        self._connection_pool = ConnectionPool(task_producer.app.conf.BROKER_URL)
+        self._connection_pool = ConnectionPool.instance()
 
     @gen.coroutine
     def _publish(self, body, priority, content_type, content_encoding,
@@ -387,7 +424,7 @@ class AMQPTaskPublishDelegate(TaskPublishDelegate):
         def tracking(fut=None):
             if fut:
                 fut.result()
-            LOGGER.info('Task({0}) is published.'.format(task_id))
+            LOGGER.debug('Task({0}) is published.'.format(task_id))
         if not future.done():
             self.task_producer.io_loop.add_future(future, lambda f: tracking(f))
         else:

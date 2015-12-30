@@ -52,19 +52,23 @@ class RedisConsumeDelegate(object):
 
     def _update_subscribe_state(self, future):
         self._subscribed = future.result()
-
-    def consume(self, callback=None):
         if self._subscribed:
-            callback()
-            return
-        if callback:
-            self._consume_callbacks.append(callback)
-        self._io_loop.add_future(
-            gen.Task(self._subscriber.subscribe, self._key, self),
-            lambda future: self._update_subscribe_state)
+            LOGGER.info('The redis subscription success(key={0}).'.format(self._key))
 
-    def cancel(self):
-        del self._consume_callbacks[:]
+    def add_consume_callback(self, callback, *args, **kwargs):
+        if callback:
+            self._consume_callbacks.append(partial(callback, *args, **kwargs))
+
+    def consume(self):
+        if not self._subscribed:
+            LOGGER.debug('Start a redis subscription(key={0}).'.format(self._key))
+            self._io_loop.add_future(
+                gen.Task(self._subscriber.subscribe, self._key, self),
+                self._update_subscribe_state)
+
+    def cancel(self, delete_consume_callbacks=True):
+        if delete_consume_callbacks:
+            del self._consume_callbacks[:]
         self._subscriber.unsubscribe(self._key, self)
         self._subscribed = False
 
@@ -72,7 +76,6 @@ class RedisConsumeDelegate(object):
         try:
             if self._consume_callbacks:
                 [cb() for cb in self._consume_callbacks]
-                del self._consume_callbacks[:]
             if self._callback:
                 self._callback(msg)
         finally:
@@ -97,7 +100,9 @@ class RedisConsumer(TaskConsumerBase):
             timeout = self.io_loop.add_timeout(
                 timedelta(milliseconds=wait_timeout),
                 partial(consume_delegate.on_message, WaitForResultTimeoutError(wait_timeout)))
-            consume_delegate.consume(callback=lambda: self.io_loop.remove_timeout(timeout))
+            consume_delegate.add_consume_callback(self.io_loop.remove_timeout, timeout)
+        consume_delegate.add_consume_callback(self.redis_client.delete, key)
+        consume_delegate.consume()
 
         # try to get the result before subscribed
         def _check_subscribed():
@@ -106,6 +111,7 @@ class RedisConsumer(TaskConsumerBase):
                 LOGGER.info('Get the result before redis subscribed: key={0}.'.format(key))
                 consume_delegate.on_message(result)
             elif not consume_delegate.subscribed:
+                LOGGER.debug('Continue to check the subscription status: key={0}.'.format(key))
                 self.io_loop.add_timeout(timedelta(seconds=1), _check_subscribed)
         self.io_loop.add_callback(_check_subscribed)
 

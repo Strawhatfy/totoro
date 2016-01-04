@@ -97,7 +97,7 @@ http://api.mongodb.org/python/current/installation.html#osx
 
 
 kwargs = {}
-version = "0.1.1"
+version = "0.1.2"
 
 with open("README.rst") as f:
     kwargs["long_description"] = f.read()
@@ -119,7 +119,7 @@ setup(
     url="https://github.com/Strawhatfy/totoro",
     license="http://www.apache.org/licenses/LICENSE-2.0",
     description="Celery integration with Tornado",
-    Keywords=['tornado', 'celery', 'amqp', 'redis'],
+    keywords=['tornado', 'celery', 'amqp', 'redis'],
     classifiers=[
         'License :: OSI Approved :: Apache Software License',
         "Programming Language :: Python :: 2.7",

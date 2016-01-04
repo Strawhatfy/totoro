@@ -13,7 +13,7 @@ import totoro.base
 import totoro.amqp
 import totoro.redis
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 VERSION = tuple(map(int, __version__.split('.')))
 
 try:

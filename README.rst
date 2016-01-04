@@ -87,7 +87,7 @@ Configuration and defaults
 TOTORO_AMQP_CONNECTION_POOL
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-*New in version 0.1.1*
+*New in version 0.1.2*
 
 The setting must a dict that used to configure the AMQP(RabbitMQ) connection pool. It supporting the following keys:
 

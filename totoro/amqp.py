@@ -221,13 +221,15 @@ class ConnectionPool(object):
         'max_open_connections')
 
     @classmethod
-    def get_conn_options(cls):
+    def get_conn_options(cls, **kwargs):
         conn_options = TaskProducerAdapter.app.conf.get('TOTORO_AMQP_CONNECTION_POOL', dict())
         current_conn_options = dict()
         if isinstance(conn_options, dict):
             for n in cls.CONN_OPTIONS_NAMES:
                 if n in conn_options:
-                    current_conn_options[n] = int(conn_options.get(n))
+                    current_conn_options[n] = int(conn_options[n])
+                elif n in kwargs:
+                    current_conn_options[n] = kwargs[n]
         else:
             LOGGER.warning('Invalid conn_options: {0}'.format(conn_options))
         LOGGER.info('ConnectionPool - current_conn_options: {0}'.format(
@@ -247,7 +249,7 @@ class ConnectionPool(object):
         if not hasattr(ConnectionPool, '_instance'):
             ConnectionPool._instance = ConnectionPool(
                 ConnectionPool.get_url(),
-                **ConnectionPool.get_conn_options())
+                **ConnectionPool.get_conn_options(max_idle_connections=3, max_open_connections=10))
         return ConnectionPool._instance
 
     def __init__(self, url,
@@ -306,11 +308,15 @@ class ConnectionPool(object):
             else:
                 LOGGER.info("Add connection to free pool: %s", self.stat())
                 self._free_conn.append(conn)
-                if len(self._free_conn) > self.max_idle:
+                max_close = len(self._free_conn) - self.max_idle
+                if max_close > 0:
                     for _ in xrange(0, len(self._free_conn)):
                         conn = self._free_conn.popleft()
                         if conn.is_idle:
                             self._close_async(conn)
+                            max_close -= 1
+                            if max_close <= 0:
+                                break
                         else:
                             self._free_conn.append(conn)
         else:

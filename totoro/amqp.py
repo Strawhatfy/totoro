@@ -10,6 +10,10 @@ import traceback
 from collections import deque
 from datetime import timedelta
 from functools import partial
+try:
+    from urllib.parse import quote
+except ImportError:
+    from urllib import quote     # noqa
 
 import pika
 import pika.adapters
@@ -217,7 +221,7 @@ class ConnectionPool(object):
         'max_open_connections')
 
     @classmethod
-    def parse_conn_options(cls):
+    def get_conn_options(cls):
         conn_options = TaskProducerAdapter.app.conf.get('TOTORO_AMQP_CONNECTION_POOL', dict())
         current_conn_options = dict()
         if isinstance(conn_options, dict):
@@ -231,11 +235,19 @@ class ConnectionPool(object):
         return current_conn_options
 
     @staticmethod
+    def get_url():
+        parts = list(TaskProducerAdapter.app.connection().as_uri(
+            include_password=True).partition('://'))
+        parts.extend(parts.pop(-1).partition('/'))
+        parts[-1] = quote(parts[-1], safe='')
+        return ''.join(str(part) for part in parts if part)
+
+    @staticmethod
     def instance():
         if not hasattr(ConnectionPool, '_instance'):
             ConnectionPool._instance = ConnectionPool(
-                TaskProducerAdapter.app.conf.BROKER_URL,
-                **ConnectionPool.parse_conn_options())
+                ConnectionPool.get_url(),
+                **ConnectionPool.get_conn_options())
         return ConnectionPool._instance
 
     def __init__(self, url,
@@ -243,7 +255,7 @@ class ConnectionPool(object):
                  max_recycle_sec=3600,
                  max_open_connections=0,
                  io_loop=None):
-        self.url = self.get_url(url)
+        self.url = url
         self.max_idle = max_idle_connections
         self.max_open = max_open_connections
         self.max_recycle_sec = max_recycle_sec
@@ -252,16 +264,6 @@ class ConnectionPool(object):
         self._opened_conns = 0
         self._free_conn = deque()
         self._waitings = deque()
-
-    @staticmethod
-    def get_url(broker_url):
-        if broker_url and broker_url[0:7] == 'amqp://':
-            return broker_url
-        else:
-            if broker_url:
-                LOGGER.warning('The `broker_url` is not in the correct format: `{0}`, '
-                               'so use the default url.'.format(broker_url))
-            return 'amqp://guest:guest@localhost:5672/%2F'
 
     def stat(self):
         """Returns (opened connections, free connections, waiters)"""

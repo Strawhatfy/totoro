@@ -81,31 +81,6 @@ To run celery worker for the example:
 
     $ python -m totoro.test.runtasks worker -l INFO
 
-
-Tests
------
-
-To run the tests for the AMQP(broker/backend):
-
-.. code-block:: bash
-
-    $ python -m totoro.test.runtasks worker -l INFO
-    $ python -m totoro.test.runtests
-
-To run the tests for the AMQP broker with the Redis backend:
-
-.. code-block:: bash
-
-    $ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0  python -m totoro.test.runtasks worker -l INFO
-    $ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0  python -m totoro.test.runtests
-
-To run the tests for the Redis(broker/backend):
-
-.. code-block:: bash
-
-    $ BROKER_URL=redis://127.0.0.1:6379/0  CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0 python -m totoro.test.runtasks worker -l INFO
-    $ BROKER_URL=redis://127.0.0.1:6379/0  CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0 python -m totoro.test.runtests
-
 Configuration and defaults
 --------------------------
 
@@ -138,3 +113,28 @@ Example configuration:
             'max_recycle_sec': 3600
         },
     )
+
+Tests
+-----
+
+To run the tests for the AMQP(broker/backend):
+
+.. code-block:: bash
+
+    $ python -m totoro.test.runtasks worker -l INFO
+    $ python -m totoro.test.runtests
+
+To run the tests for the AMQP broker with the Redis backend:
+
+.. code-block:: bash
+
+    $ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0  python -m totoro.test.runtasks worker -l INFO
+    $ CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0  python -m totoro.test.runtests
+
+To run the tests for the Redis(broker/backend):
+
+.. code-block:: bash
+
+    $ BROKER_URL=redis://127.0.0.1:6379/0  CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0 python -m totoro.test.runtasks worker -l INFO
+    $ BROKER_URL=redis://127.0.0.1:6379/0  CELERY_RESULT_BACKEND=redis://127.0.0.1:6379/0 python -m totoro.test.runtests
+

@@ -8,32 +8,40 @@ from functools import partial
 
 from tornado import gen
 from tornado import ioloop
-from tornadoredis import Client
-from tornadoredis.exceptions import ResponseError
-from tornadoredis.pubsub import SocketIOSubscriber
-from redis import StrictRedis
 
 from totoro.base import TaskConsumerBase, WaitForResultTimeoutError
 
+try:
+    from tornadoredis import Client
+    from tornadoredis.exceptions import ResponseError
+    from tornadoredis.pubsub import SocketIOSubscriber
+    from redis import StrictRedis
+except ImportError:
+    Client = None  # noqa
+    ResponseError = None  # noqa
+    SocketIOSubscriber = None  # noqa
+    StrictRedis = None  # noqa
 
 LOGGER = logging.getLogger(__name__)
 
-
-class RedisClient(Client):
-    @gen.engine
-    def _consume_bulk(self, tail, callback=None):
-        response = yield gen.Task(self.connection.read, int(tail) + 2)
-        if isinstance(response, Exception):
-            raise response
-        if not response:
-            raise ResponseError('EmptyResponse')
-        else:
-            # We don't cast try to convert to unicode here as the response
-            # may not be utf-8 encoded, for example if using msgpack as a
-            # serializer
-            # response = to_unicode(response)
-            response = response[:-2]
-        callback(response)
+if Client:
+    class RedisClient(Client):
+        @gen.engine
+        def _consume_bulk(self, tail, callback=None):
+            response = yield gen.Task(self.connection.read, int(tail) + 2)
+            if isinstance(response, Exception):
+                raise response
+            if not response:
+                raise ResponseError('EmptyResponse')
+            else:
+                # We don't cast try to convert to unicode here as the response
+                # may not be utf-8 encoded, for example if using msgpack as a
+                # serializer
+                # response = to_unicode(response)
+                response = response[:-2]
+            callback(response)
+else:
+    RedisClient = None
 
 
 class RedisConsumeDelegate(object):
@@ -109,6 +117,9 @@ class RedisConsumer(TaskConsumerBase):
         self.port = self.backend.connparams['port']
         self.password = self.backend.connparams['password']
         self.selected_db = self.backend.connparams['db']
+
+        if StrictRedis is None or Client is None:
+            raise ImportError('The redis backend requires the redis and tornado-redis library.')
         self.redis_client = StrictRedis(self.host, self.port, self.selected_db, self.password)
         self.subscriber = self.create_redis_subscriber()
 

@@ -13,7 +13,7 @@ import totoro.base
 import totoro.amqp
 import totoro.redis
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 VERSION = tuple(map(int, __version__.split('.')))
 
 try:
@@ -48,13 +48,13 @@ def setup_producer(celery_app=None, io_loop=None, result_cls=None, task_publish_
     io_loop = io_loop or tornado.ioloop.IOLoop.instance()
     result_cls = result_cls or totoro.base.AsyncResult
 
-    if (celery_app.conf.BROKER_URL[0:5] == 'redis'
-            and celery_app.conf.CELERY_RESULT_BACKEND[0:5] != 'redis'):
+    if (celery_app.conf.BROKER_URL[0:5] == 'redis'and
+            celery_app.conf.CELERY_RESULT_BACKEND[0:5] != 'redis'):
         raise ValueError('Redis broker only supports the redis result backend.')
 
-    if (celery_app.conf.BROKER_URL
-            and celery_app.conf.BROKER_URL[0:4] == 'amqp'
-            and task_publish_delegate is None):
+    if (celery_app.conf.BROKER_URL and
+            celery_app.conf.BROKER_URL[0:4] == 'amqp' and
+            task_publish_delegate is None):
         task_publish_delegate = totoro.amqp.AMQPTaskPublishDelegate
 
     _setup_producer(celery_app, io_loop, task_publish_delegate, result_cls)

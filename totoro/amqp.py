@@ -30,7 +30,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def generate_consumer_tag():
-    return 'totoro_tag_0.{0}'.format(uuid.uuid4().get_hex())
+    return 'totoro_tag_0.{0}'.format(uuid.uuid4().hex)
 
 
 class Connection(object):
@@ -310,7 +310,7 @@ class ConnectionPool(object):
                 self._free_conn.append(conn)
                 max_close = len(self._free_conn) - self.max_idle
                 if max_close > 0:
-                    for _ in xrange(0, len(self._free_conn)):
+                    for _ in range(0, len(self._free_conn)):
                         conn = self._free_conn.popleft()
                         if conn.is_idle:
                             self._close_async(conn)

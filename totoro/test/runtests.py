@@ -17,7 +17,7 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            self.assertEquals(3, response.result)
+            self.assertEqual(3, response.result)
         future = gen.Task(tasks.add.apply_async, args=[1, 2])
         io_loop.add_future(future, lambda f: done(f.result()))
         io_loop.start()
@@ -27,7 +27,7 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            self.assertEquals(3, response.result)
+            self.assertEqual(3, response.result)
         future = gen.Task(tasks.add.apply_async, kwargs=dict(x=1, y=2))
         io_loop.add_future(future, lambda f: done(f.result()))
         io_loop.start()
@@ -37,7 +37,7 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            self.assertEquals(3, response.result)
+            self.assertEqual(3, response.result)
         future = gen.Task(tasks.add.apply_async, args=[1], kwargs=dict(y=2))
         io_loop.add_future(future, lambda f: done(f.result()))
         io_loop.start()
@@ -47,7 +47,7 @@ class TestCase(unittest.TestCase):
 
         def done(response):
             io_loop.stop()
-            self.assertEquals(3, response.result)
+            self.assertEqual(3, response.result)
         future = gen.Task(tasks.add.apply_async,
                           args=[1, 2],
                           **{'countdown': 3})
@@ -108,7 +108,7 @@ class TestCase(unittest.TestCase):
                 io_loop.stop()
             self.assertEqual(3, response.result)
 
-        for _ in xrange(0, total_number):
+        for _ in range(0, total_number):
             future = gen.Task(tasks.add.apply_async, args=[1, 2])
             io_loop.add_future(future, lambda f: done(f.result()))
         io_loop.start()
